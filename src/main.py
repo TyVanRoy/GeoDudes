@@ -6,6 +6,7 @@ from os.path import sep
 from scipy.signal import correlate, correlation_lags
 
 data_path = 'data'
+table_path = 'tables'
 gen_path = 'gen'
 crime_ext = '_crime.csv'
 covid_ext = '_covid.csv'
@@ -19,39 +20,91 @@ city_splits = {
 
 shared_types = ['burglary', 'robbery', 'theft']
 
-city_params = dict(sf={'assault': 1,
-                       'burglary - residential': 2,
-                       'burglary - commercial': 1,
-                       'larceny theft': 3,
-                       'motor vehicle theft': 2,
-                       'robbery': 1,
-                       'domestic violence': 1,
-                       'burglary': 2,
-                       'theft': 5,
-                       'all': 2},
-                   mw={'theft': 1,
-                       'sex_crime': 1,
-                       'assault': 1,
-                       'burglary': 1,
-                       'robbery': 1,
-                       'all': 1},
-                   br={'assault': 1,
-                       'theft': 4,
-                       'vehicle burglary': 3,
-                       'residential burglary': 1,
-                       'non-residential burglary': 1,
-                       'individual robbery': 1,
-                       'domestic violence': 6,
-                       'business robbery': 1,
-                       'burglary': 3,
-                       'robbery': 1,
-                       'all': 1},
-                   nola={'theft': 1,
-                         'assault': 1,
-                         'domestic violence': 1,
-                         'burglary': 1,
-                         'robbery': 1,
-                         'all': 1})
+city_type_params = dict(sf={'assault': 1,
+                            'burglary - residential': 2,
+                            'burglary - commercial': 1,
+                            'larceny theft': 3,
+                            'motor vehicle theft': 2,
+                            'robbery': 1,
+                            'domestic violence': 1,
+                            'burglary': 2,
+                            'theft': 5,
+                            'all': 2},
+                        mw={'theft': 1,
+                            'sex_crime': 1,
+                            'assault': 1,
+                            'burglary': 1,
+                            'robbery': 1,
+                            'all': 1},
+                        br={'assault': 1,
+                            'theft': 4,
+                            'vehicle burglary': 3,
+                            'residential burglary': 1,
+                            'non-residential burglary': 1,
+                            'individual robbery': 1,
+                            'domestic violence': 6,
+                            'business robbery': 1,
+                            'burglary': 3,
+                            'robbery': 1,
+                            'all': 1},
+                        nola={'theft': 1,
+                              'assault': 1,
+                              'domestic violence': 1,
+                              'burglary': 1,
+                              'robbery': 1,
+                              'all': 1})
+
+
+def arima_table(city, covid_days, val_months, test_covid=True, month='30', year='365', poly_order=3, use_tract=False):
+    # Load crime data ##
+    crime_by_type, crime_by_tract, types, tracts, crime_timeline = load_data(city)
+    print(crime_by_type.shape)
+
+    ms = city_type_params[city]
+
+    out_f = open('../' + table_path + '/' + city + '_' + 'covid_crime' + ('by_tract' if use_tract else 'by_type') + '.csv', 'w+')
+
+    out_f.write(('tract_id' if use_tract else 'type') + ',integral,max_diff,norm_integral,norm_max_diff\n')
+
+    n_runs = len(tracts if use_tract else types)
+    integrals = []
+    diffs = []
+    for i in tqdm(range(n_runs)):
+        sub = tracts[i] if use_tract else types[i]
+        sub = sub.lower()
+        model, train, val, test, past_crime, covid_crime, all_crime_monthly = \
+            generate_arima_model(crime_by_tract[i] if use_tract else crime_by_type[i], covid_days, val_months, m=1 if use_tract else ms[sub],
+                                 month=month, year=year, poly_order=poly_order,
+                                 return_metacrime=True)
+
+        # Get model parameters ##
+        all_model_params = model.get_params()
+        model_params = {'order': all_model_params['order'],
+                        'seasonal_order': all_model_params['seasonal_order']}
+
+        # Get predictions ##
+        predictions, conf_int = model.predict(val.shape[0] + test.shape[0], return_conf_int=True)
+
+        # Evaluate validation predictions ##
+        val_performance = evaluate_predictions(predictions[:val.shape[0]], val)
+
+        # Evaluate test predictions ##
+        test_performance = None
+        if test_covid:
+            test_performance = evaluate_predictions(predictions[val.shape[0]:], test)
+
+        integrals.append(test_performance[0])
+        diffs.append(test_performance[1])
+
+    integrals = np.asarray(integrals)
+    integrals_norm = integrals / np.linalg.norm(integrals)
+    diffs = np.asarray(diffs)
+    diffs_norm = diffs / np.linalg.norm(diffs)
+
+    for i, t in enumerate(tracts if use_tract else types):
+        out_f.write('{},{},{},{},{}\n'.format(t, integrals[i], diffs[i], integrals_norm[i], diffs_norm[i]))
+
+    out_f.close()
 
 
 def plot_arima(city, covid_days, val_months, test_covid=False, month='30', year='365', poly_order=3, auto_save=False):
@@ -59,7 +112,7 @@ def plot_arima(city, covid_days, val_months, test_covid=False, month='30', year=
     crime_by_type, crime_by_tract, types, tracts, crime_timeline = load_data(city)
     print(crime_by_type.shape)
 
-    ms = city_params[city]
+    ms = city_type_params[city]
 
     for i, crime_type in enumerate(types):
         crime_type = crime_type.lower()
@@ -260,7 +313,7 @@ def load_data(city, load_covid=False):
     return crime_by_type, crime_by_tract, types, tracts, crime_timeline, covid_by_tract, covid_timeline
 
 
-def generate_arima_params(city, val_months, month, year, poly_order, max_m=9):
+def generate_arima_params(city, val_months, month, year, poly_order, max_m=9, use_tract=False):
     covid_days = city_splits[city]
     crime_by_type, crime_by_tract, types, tracts, crime_timeline = load_data(city)
 
@@ -298,7 +351,8 @@ def add_merged_types(crime_type, types, by_type_crime_data):
 
 
 def multi_plot_c4(city):
-    crime_by_type, crime_by_tract, types, tracts, crime_timeline, covid_by_tract, covid_timeline = load_data(city, load_covid=True)
+    crime_by_type, crime_by_tract, types, tracts, crime_timeline, covid_by_tract, covid_timeline = \
+        load_data(city, load_covid=True)
 
     all_crime = crime_by_type[len(types) - 1]
     all_covid = np.sum(covid_by_tract, axis=0)
@@ -360,12 +414,15 @@ if __name__ == '__main__':
 
     parser.add_argument('--max_m', type=int, action='store', default=9,
                         help='maximum m for gen_best_params search')
+    parser.add_argument('--tract_id', type=str, action='store', default='False',
+                        help='Do crime operations based on tract_id instead of crime type.')
 
     args = parser.parse_args()
 
     test_covid_ = str2bool(args.test_covid)
-    smooth_together = False  # str2bool(args.smooth_together)
+    smooth_together = False  # str2bool(args.smooth_together) # Should never be used.
     auto_save_ = str2bool(args.auto_save)
+    use_tract_ = str2bool(args.tract_id)
 
     if args.city == 'all':
         cities = city_splits.keys()
@@ -374,13 +431,18 @@ if __name__ == '__main__':
 
     for city_ in cities:
         print('{}({})'.format(args.option.lower(), city_))
-        if args.option.lower() == 'gen_data':   # generate city data
+        if args.option.lower() == 'gen_data':  # generate city data
             gen_data(city_)
-        elif args.option.lower() == 'plot_arima':    # plot data
+        elif args.option.lower() == 'arima_table':  # table performance data
+            arima_table(city_, city_splits[city_] if args.covid_days == -1 else args.covid_days, args.val_months,
+                        test_covid=True, month=args.month, year=args.year, poly_order=args.poly, use_tract=True)
+        elif args.option.lower() == 'plot_arima':  # plot data
             plot_arima(city_, city_splits[city_] if args.covid_days == -1 else args.covid_days, args.val_months,
-                       test_covid=test_covid_, month=args.month, year=args.year, poly_order=args.poly, auto_save=auto_save_)
+                       test_covid=test_covid_, month=args.month, year=args.year,
+                       poly_order=args.poly, auto_save=auto_save_)
         elif args.option.lower() == 'gen_arima_params':  # find best model params
-            params_ = generate_arima_params(city_, args.val_months, args.month, args.year, args.poly, max_m=args.max_m)
+            params_ = generate_arima_params(city_, args.val_months, args.month, args.year, args.poly,
+                                            max_m=args.max_m, use_tract=use_tract_)
             print(params_)
         elif args.option.lower() == 'plot_cc':
             multi_plot_c4(city_)
