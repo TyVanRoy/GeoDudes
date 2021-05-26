@@ -1,58 +1,10 @@
 from GeoSeries import *
+from params import *
 from model import *
 from plot import *
 from tqdm import tqdm
 from os.path import sep
 from scipy.signal import correlate, correlation_lags
-
-data_path = 'data'
-table_path = 'tables'
-gen_path = 'gen'
-crime_ext = '_crime.csv'
-covid_ext = '_covid.csv'
-
-city_splits = {
-    'sf': 395,
-    'mw': 387,
-    'br': 323,
-    'nola': 381
-}
-
-shared_types = ['burglary', 'robbery', 'theft']
-
-city_type_params = dict(sf={'assault': 1,
-                            'burglary - residential': 2,
-                            'burglary - commercial': 1,
-                            'larceny theft': 3,
-                            'motor vehicle theft': 2,
-                            'robbery': 1,
-                            'domestic violence': 1,
-                            'burglary': 2,
-                            'theft': 5,
-                            'all': 2},
-                        mw={'theft': 1,
-                            'sex_crime': 1,
-                            'assault': 1,
-                            'burglary': 1,
-                            'robbery': 1,
-                            'all': 1},
-                        br={'assault': 1,
-                            'theft': 4,
-                            'vehicle burglary': 3,
-                            'residential burglary': 1,
-                            'non-residential burglary': 1,
-                            'individual robbery': 1,
-                            'domestic violence': 6,
-                            'business robbery': 1,
-                            'burglary': 3,
-                            'robbery': 1,
-                            'all': 1},
-                        nola={'theft': 1,
-                              'assault': 1,
-                              'domestic violence': 1,
-                              'burglary': 1,
-                              'robbery': 1,
-                              'all': 1})
 
 
 def arima_table(city, covid_days, val_months, test_covid=True, month='30', year='365', poly_order=3, use_tract=False):
@@ -319,10 +271,11 @@ def generate_arima_params(city, val_months, month, year, poly_order, max_m=9, us
 
     params = {}
 
-    for i, crime_type in enumerate(types):
-        crime_type = crime_type.lower()
-        print('Finding best m for {}...'.format(crime_type))
-        params[crime_type] = find_best_m(crime_by_type[i], covid_days, val_months, month, year, poly_order, max_m=max_m)
+    for i, sub in enumerate(tracts if use_tract else types):
+        sub = sub.lower()
+        print('Finding best m for {} ({}/{})...'.format(sub, i+1, len(tracts if use_tract else types)))
+        params[sub] = find_best_m(crime_by_tract[i] if use_tract else crime_by_type[i], covid_days, val_months, month,
+                                  year, poly_order, max_m=max_m)
 
     return params
 
