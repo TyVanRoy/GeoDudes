@@ -6,11 +6,14 @@ from scipy.signal import savgol_filter
 gen_path = 'gen'
 
 
-def evaluate_predictions(predictions, reality):
+def evaluate_predictions(predictions, reality, conf_int=None):
 
     max_diff = 0
     max_dif_ind = -1
     integral = 0
+
+    high_conf_int = 0
+    low_conf_int = 0
 
     for i, v in enumerate(reality):
         diff = v - predictions[i]
@@ -20,7 +23,19 @@ def evaluate_predictions(predictions, reality):
             max_diff = abs(diff)
             max_dif_ind = i
 
-    return integral, max_diff, max_dif_ind
+        if conf_int is not None:
+            high_diff = v - conf_int[i][1]
+            low_diff = conf_int[i][0] - v
+
+            if high_diff > 0:
+                high_conf_int += high_diff
+            if low_diff > 0:
+                low_conf_int += low_diff
+
+    if conf_int is None:
+        return integral, max_diff, max_dif_ind
+    else:
+        return integral, max_diff, max_dif_ind, high_conf_int, low_conf_int
 
 
 def month_from(date):

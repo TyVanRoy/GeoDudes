@@ -12,20 +12,26 @@ def arima_table(city, covid_days, val_months, test_covid=True, month='30', year=
     crime_by_type, crime_by_tract, types, tracts, crime_timeline = load_data(city)
     print(crime_by_type.shape)
 
-    ms = city_type_params[city]
+    ms = city_tract_params[city] if use_tract else city_type_params[city]
 
-    out_f = open('../' + table_path + '/' + city + '_' + 'covid_crime' + ('by_tract' if use_tract else 'by_type') + '.csv', 'w+')
+    out_f = open('../' + table_path + '/' + city + '_' + 'covid_crime' + ('by_tract' if use_tract else 'by_type') +
+                 '.csv', 'w+')
 
-    out_f.write(('tract_id' if use_tract else 'type') + ',integral,max_diff,norm_integral,norm_max_diff\n')
+    out_f.write(('tract_id' if use_tract else 'type') + ',integral,max_diff,norm_integral,norm_max_diff,'
+                                                        'high_conf_int, low_conf_int,'
+                                                        'norm_high_conf_int, norm_low_conf_int\n')
 
     n_runs = len(tracts if use_tract else types)
     integrals = []
     diffs = []
+    high_conf_ints = []
+    low_conf_ints = []
     for i in tqdm(range(n_runs)):
         sub = tracts[i] if use_tract else types[i]
         sub = sub.lower()
         model, train, val, test, past_crime, covid_crime, all_crime_monthly = \
-            generate_arima_model(crime_by_tract[i] if use_tract else crime_by_type[i], covid_days, val_months, m=1 if use_tract else ms[sub],
+            generate_arima_model(crime_by_tract[i] if use_tract else crime_by_type[i], covid_days, val_months,
+                                 m=ms[sub],
                                  month=month, year=year, poly_order=poly_order,
                                  return_metacrime=True)
 
@@ -38,23 +44,35 @@ def arima_table(city, covid_days, val_months, test_covid=True, month='30', year=
         predictions, conf_int = model.predict(val.shape[0] + test.shape[0], return_conf_int=True)
 
         # Evaluate validation predictions ##
-        val_performance = evaluate_predictions(predictions[:val.shape[0]], val)
+        # val_performance = evaluate_predictions(predictions[:val.shape[0]], val)
 
         # Evaluate test predictions ##
         test_performance = None
         if test_covid:
-            test_performance = evaluate_predictions(predictions[val.shape[0]:], test)
+            test_performance = evaluate_predictions(predictions[val.shape[0]:], test, conf_int[val.shape[0]:][:])
 
         integrals.append(test_performance[0])
         diffs.append(test_performance[1])
 
+        high_conf_ints.append(test_performance[3])
+        low_conf_ints.append(test_performance[4])
+
     integrals = np.asarray(integrals)
     integrals_norm = integrals / np.linalg.norm(integrals)
+
     diffs = np.asarray(diffs)
     diffs_norm = diffs / np.linalg.norm(diffs)
 
+    high_conf_ints = np.asarray(high_conf_ints)
+    high_conf_ints_norm = high_conf_ints / np.linalg.norm(high_conf_ints)
+
+    low_conf_ints = np.asarray(low_conf_ints)
+    low_conf_ints_norm = low_conf_ints / np.linalg.norm(low_conf_ints)
+
     for i, t in enumerate(tracts if use_tract else types):
-        out_f.write('{},{},{},{},{}\n'.format(t, integrals[i], diffs[i], integrals_norm[i], diffs_norm[i]))
+        out_f.write('{},{},{},{},{}\n'.format(t, integrals[i], diffs[i], integrals_norm[i], diffs_norm[i],
+                                              high_conf_ints[i], low_conf_ints[i],
+                                              high_conf_ints_norm[i], low_conf_ints_norm[i]))
 
     out_f.close()
 
@@ -327,6 +345,24 @@ def multi_plot_c4(city):
     plot_c4(city, all_crime, crime_timeline, all_covid, covid_timeline, c4, lags)
 
 
+def gen_param_table(city):
+
+    # City
+    # 0. Year, Covid Split, Validation Months, Maximum m
+    # 1. Type
+    #   a. m
+    #   b. params (m,n,p,etc...)
+    #   c. validation performance
+    #   d. test performance
+    # 2. Tract
+    #   a. m
+    #   b. params (m,n,p,etc...)
+    #   c. validation performance
+    #   d. test performance
+
+    pass
+
+
 def str2bool(v):
     if isinstance(v, bool):
         return v
@@ -338,6 +374,19 @@ def str2bool(v):
         raise argparse.ArgumentTypeError('Boolean value expected.')
 
 
+
+'''
+Todo
+1. Tract ID map parameter tuning		    DONE
+2. Confidence Interval Integral tables      DONE    - needs testing
+3. George Floyd
+4. Table of model parameters and specs
+
+Confidence Interval Intercepts
+Seaborne/domain refinement
+
+Ridge line chart
+'''
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('option', type=str, action='store',
@@ -399,3 +448,5 @@ if __name__ == '__main__':
             print(params_)
         elif args.option.lower() == 'plot_cc':
             multi_plot_c4(city_)
+        elif args.option.lower() == 'param_table':
+            gen_param_table(city_)
