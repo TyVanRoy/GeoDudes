@@ -5,6 +5,13 @@ gen_path = 'gen'
 crime_ext = '_crime.csv'
 covid_ext = '_covid.csv'
 
+city_names = {
+    'sf': 'San Francisco',
+    'mw': 'Milwaukee',
+    'br': 'Baton Rouge',
+    'nola': 'New Orleans'
+}
+
 city_splits = {
     'sf': 395,
     'mw': 387,

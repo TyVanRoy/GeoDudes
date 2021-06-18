@@ -10,11 +10,10 @@ from scipy.signal import correlate, correlation_lags
 def arima_table(city, covid_days, val_months, test_covid=True, month='30', year='365', poly_order=3, use_tract=False):
     # Load crime data ##
     crime_by_type, crime_by_tract, types, tracts, crime_timeline = load_data(city)
-    print(crime_by_type.shape)
 
     ms = city_tract_params[city] if use_tract else city_type_params[city]
 
-    out_f = open('../' + table_path + '/' + city + '_' + 'covid_crime' + ('by_tract' if use_tract else 'by_type') +
+    out_f = open('../' + table_path + '/' + city + '_covid-crime_' + ('by_tract' if use_tract else 'by_type') +
                  '.csv', 'w+')
 
     out_f.write(('tract_id' if use_tract else 'type') + ',integral,max_diff,norm_integral,norm_max_diff,'
@@ -351,7 +350,7 @@ def gen_param_table(city):
     # 0. Year, Covid Split, Validation Months, Maximum m
     # 1. Type
     #   a. m
-    #   b. params (m,n,p,etc...)
+    #   b. params (m,n,p,..., AIC)
     #   c. validation performance
     #   d. test performance
     # 2. Tract
@@ -360,7 +359,81 @@ def gen_param_table(city):
     #   c. validation performance
     #   d. test performance
 
-    pass
+    crime_by_type, crime_by_tract, types, tracts, crime_timeline = load_data(city)
+
+    covid_days = city_splits[city]
+    val_months = 7
+    year = 319 if city == 'mw' else 365
+    month = 30
+    poly_order = 3
+    max_m = 9
+
+    print(city_names[city] + " Parameters")
+
+    # 0.
+    print("\t# Days labeled Covid days: ", covid_days)
+    print("\t# Months before Covid used for validation: ", val_months)
+    print("\tMaximum m used for best m search: ", max_m)
+    print("\tDays in year (used for Savitzky-Golay filter): ", year)
+
+    # 1.
+    for i, t in enumerate(types):
+        ms = city_type_params[city]
+        model, train, val, test, past_crime, covid_crime, all_crime_monthly = \
+            generate_arima_model(crime_by_type[i], covid_days, val_months, m=ms[t],
+                                 month=month, year=year, poly_order=poly_order,
+                                 return_metacrime=True)
+
+        # Get model parameters ##
+        all_model_params = model.get_params()
+        model_params = {'order': all_model_params['order'],
+                        'seasonal_order': all_model_params['seasonal_order']}
+
+        # Get predictions ##
+        predictions, conf_int = model.predict(val.shape[0] + test.shape[0], return_conf_int=True)
+
+        # Evaluate validation predictions ##
+        val_performance = evaluate_predictions(predictions[:val.shape[0]], val)
+
+        # Evaluate test predictions ##
+        test_performance = evaluate_predictions(predictions[val.shape[0]:], test)
+
+        print("\n\tType: ", t)
+        print("\t\tm=", ms[t])
+        print("\t\t(m,o,p,...AIC)=", 0)
+        print("\t\tvalidation performance=", 0)
+        print("\t\ttest performance=", 0)
+
+    # 2.
+    for i, tract in enumerate(tracts):
+        ms = city_tract_params[city]
+        model, train, val, test, past_crime, covid_crime, all_crime_monthly = \
+            generate_arima_model(crime_by_tract[i], covid_days, val_months, m=ms[tract],
+                                 month=month, year=year, poly_order=poly_order,
+                                 return_metacrime=True)
+
+        # Get model parameters ##
+        all_model_params = model.get_params()
+        model_params = {'order': all_model_params['order'],
+                        'seasonal_order': all_model_params['seasonal_order']}
+
+        # Get predictions ##
+        predictions, conf_int = model.predict(val.shape[0] + test.shape[0], return_conf_int=True)
+
+        # Evaluate validation predictions ##
+        val_performance = evaluate_predictions(predictions[:val.shape[0]], val)
+
+        # Evaluate test predictions ##
+        test_performance = evaluate_predictions(predictions[val.shape[0]:], test)
+
+        print("\n\tTract: ", tract)
+        print("\t\tm=", ms[tract])
+        print("\t\t(m,o,p,...AIC)=", 0)
+        print("\t\tvalidation performance=", 0)
+        print("\t\ttest performance=", 0)
+
+
+
 
 
 def str2bool(v):
@@ -374,13 +447,12 @@ def str2bool(v):
         raise argparse.ArgumentTypeError('Boolean value expected.')
 
 
-
 '''
 Todo
-1. Tract ID map parameter tuning		    DONE
+1. Tract ID map parameter tuning		    DONE    - needs testing
 2. Confidence Interval Integral tables      DONE    - needs testing
-3. George Floyd
-4. Table of model parameters and specs
+3. Table of model parameters and specs
+4. George Floyd
 
 Confidence Interval Intercepts
 Seaborne/domain refinement

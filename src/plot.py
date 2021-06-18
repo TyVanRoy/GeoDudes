@@ -2,13 +2,7 @@ from PIL import Image
 from matplotlib import pyplot as plt, dates, ticker
 import numpy as np
 from os.path import sep
-
-city_names = {
-    'sf': 'San Francisco',
-    'mw': 'Milwaukee',
-    'br': 'Baton Rouge',
-    'nola': 'New Orleans'
-}
+from params import city_names
 
 
 def plot_c4(city, crime, crime_timeline, covid, covid_timeline, c4, c4_domain, crime_type='all', tract='all',
