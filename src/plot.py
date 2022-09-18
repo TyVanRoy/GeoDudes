@@ -3,6 +3,8 @@ from matplotlib import pyplot as plt, dates, ticker
 import numpy as np
 from os.path import sep
 from params import city_names
+import seaborn as sns
+import pandas as pd
 
 
 def plot_c4(city, crime, crime_timeline, covid, covid_timeline, c4, c4_domain, crime_type='all', tract='all',
@@ -182,3 +184,121 @@ def plot_crime_arima(city, crime_type, train, val, test, predictions, past_crime
             Image.open(impath).show()
     else:
         plt.show()
+
+
+def seaborn_final_plot(city, predictions, realities, width, type_labels=True):
+
+    sns.set_theme()
+
+    fig, axs = plt.subplots(ncols=1, nrows=7, figsize=(width, 14), sharex=True)
+    ax = 0
+
+    # All
+    sns.lineplot(x="time", y="value", data=pd.melt(predictions['all'], ['time']), ax=axs[ax])
+    sns.lineplot(x="time", y="reality", data=realities['all'], ax=axs[ax])
+    axs[ax].set(xlabel='Month', ylabel='all reported crimes' if type_labels else '')
+    ax += 1
+
+    # Assault
+    sns.lineplot(x="time", y="value", data=pd.melt(predictions['assault'], ['time']), ax=axs[ax])
+    sns.lineplot(x="time", y="reality", data=realities['assault'], ax=axs[ax])
+    axs[ax].set(xlabel='Month', ylabel='assaults' if type_labels else '')
+    ax += 1
+
+    # Residential Burglary
+    sns.lineplot(x="time", y="value", data=pd.melt(predictions['burglary - residential' if city == 'sf' else
+                                                               'residential burglary'], ['time']), ax=axs[ax])
+    sns.lineplot(x="time", y="reality", data=realities['burglary - residential' if city == 'sf' else
+                                                       'residential burglary'], ax=axs[ax])
+    axs[ax].set(xlabel='Month', ylabel='resid. burglaries' if type_labels else '')
+    ax += 1
+
+    # Commercial Burglary
+    sns.lineplot(x="time", y="value", data=pd.melt(predictions['burglary - commercial' if city == 'sf' else
+                                                               'non-residential burglary'], ['time']), ax=axs[ax])
+    sns.lineplot(x="time", y="reality", data=realities['burglary - commercial' if city == 'sf' else
+                                                       'non-residential burglary'], ax=axs[ax])
+    axs[ax].set(xlabel='Month', ylabel='comm. burglaries' if type_labels else '')
+    ax += 1
+
+    # Robbery
+    sns.lineplot(x="time", y="value", data=pd.melt(predictions['robbery'], ['time']), ax=axs[ax])
+    sns.lineplot(x="time", y="reality", data=realities['robbery'], ax=axs[ax])
+    axs[ax].set(xlabel='Month', ylabel='robberies' if type_labels else '')
+    ax += 1
+
+    # Theft
+    sns.lineplot(x="time", y="value", data=pd.melt(predictions['theft'], ['time']), ax=axs[ax])
+    sns.lineplot(x="time", y="reality", data=realities['theft'], ax=axs[ax])
+    axs[ax].set(xlabel='Month', ylabel='thefts' if type_labels else '')
+    ax += 1
+
+    # Domestic Violence
+    sns.lineplot(x="time", y="value", data=pd.melt(predictions['domestic violence'], ['time']), ax=axs[ax])
+    sns.lineplot(x="time", y="reality", data=realities['domestic violence'], ax=axs[ax])
+    axs[ax].set(xlabel='Month', ylabel='domestic violence cases' if type_labels else '')
+
+    # save
+    fig.autofmt_xdate(rotation=45)
+    fig.savefig(city + '_tight' + ('' if type_labels else '_no_labels') + 'w{}'.format(width) + '.png',
+                bbox_inches='tight')
+    fig.savefig(city + ('' if type_labels else '_no_labels') + 'w{}'.format(width) + '.png')
+
+
+def seaborn_final_plot_appendix(city, predictions, realities, width, type_labels=True):
+
+    sns.set_theme()
+
+    fig, axs = plt.subplots(ncols=1, nrows=7, figsize=(width, 14), sharex=True)
+    ax = 0
+
+    # All
+    sns.lineplot(x="time", y="value", data=pd.melt(predictions['all'], ['time']), ax=axs[ax])
+    sns.lineplot(x="time", y="reality", data=realities['all'], ax=axs[ax])
+    axs[ax].set(xlabel='Month', ylabel='all reported crimes' if type_labels else '')
+    ax += 1
+
+    # Assault
+    sns.lineplot(x="time", y="value", data=pd.melt(predictions['assault'], ['time']), ax=axs[ax])
+    sns.lineplot(x="time", y="reality", data=realities['assault'], ax=axs[ax])
+    axs[ax].set(xlabel='Month', ylabel='assaults' if type_labels else '')
+    ax += 1
+
+    # Residential Burglary
+    sns.lineplot(x="time", y="value", data=pd.melt(predictions['burglary - residential' if city == 'sf' else
+                                                               'residential burglary'], ['time']), ax=axs[ax])
+    sns.lineplot(x="time", y="reality", data=realities['burglary - residential' if city == 'sf' else
+                                                       'residential burglary'], ax=axs[ax])
+    axs[ax].set(xlabel='Month', ylabel='resid. burglaries' if type_labels else '')
+    ax += 1
+
+    # Commercial Burglary
+    sns.lineplot(x="time", y="value", data=pd.melt(predictions['burglary - commercial' if city == 'sf' else
+                                                               'non-residential burglary'], ['time']), ax=axs[ax])
+    sns.lineplot(x="time", y="reality", data=realities['burglary - commercial' if city == 'sf' else
+                                                       'non-residential burglary'], ax=axs[ax])
+    axs[ax].set(xlabel='Month', ylabel='comm. burglaries' if type_labels else '')
+    ax += 1
+
+    # Robbery
+    sns.lineplot(x="time", y="value", data=pd.melt(predictions['robbery'], ['time']), ax=axs[ax])
+    sns.lineplot(x="time", y="reality", data=realities['robbery'], ax=axs[ax])
+    axs[ax].set(xlabel='Month', ylabel='robberies' if type_labels else '')
+    ax += 1
+
+    # Theft
+    sns.lineplot(x="time", y="value", data=pd.melt(predictions['theft'], ['time']), ax=axs[ax])
+    sns.lineplot(x="time", y="reality", data=realities['theft'], ax=axs[ax])
+    axs[ax].set(xlabel='Month', ylabel='thefts' if type_labels else '')
+    ax += 1
+
+    # Domestic Violence
+    sns.lineplot(x="time", y="value", data=pd.melt(predictions['domestic violence'], ['time']), ax=axs[ax])
+    sns.lineplot(x="time", y="reality", data=realities['domestic violence'], ax=axs[ax])
+    axs[ax].set(xlabel='Month', ylabel='domestic violence cases' if type_labels else '')
+
+    # save
+    fig.autofmt_xdate(rotation=45)
+    fig.savefig(city + '_tight' + ('' if type_labels else '_no_labels') + 'w{}'.format(width) + '.png',
+                bbox_inches='tight')
+    fig.savefig(city + ('' if type_labels else '_no_labels') + 'w{}'.format(width) + '.png')

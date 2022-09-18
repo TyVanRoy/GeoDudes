@@ -6,6 +6,22 @@ from scipy.signal import savgol_filter
 gen_path = 'gen'
 
 
+def monthly_conf_integrals(conf_int, reality):
+
+    high_conf_ints = []
+    low_conf_ints = []
+
+    for i, v in enumerate(reality):
+
+        high_diff = v - conf_int[i][1]
+        low_diff = conf_int[i][0] - v
+
+        high_conf_ints.append(high_diff if high_diff > 0 else 0)
+        low_conf_ints.append(low_diff if low_diff > 0 else 0)
+
+    return high_conf_ints, low_conf_ints
+
+
 def evaluate_predictions(predictions, reality, conf_int=None):
 
     max_diff = 0
@@ -26,6 +42,8 @@ def evaluate_predictions(predictions, reality, conf_int=None):
         if conf_int is not None:
             high_diff = v - conf_int[i][1]
             low_diff = conf_int[i][0] - v
+
+            print(v, conf_int[i][1])
 
             if high_diff > 0:
                 high_conf_int += high_diff

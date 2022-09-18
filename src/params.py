@@ -19,6 +19,65 @@ city_splits = {
     'nola': 381
 }
 
+timelines = {
+    'sf': ['Jul 19',
+           'Aug 19',
+           'Sep 19',
+           'Oct 19',
+           'Nov 19',
+           'Dec 19',
+           'Jan 20',
+           'Feb 20',
+           'Mar 20',
+           'Apr 20',
+           'May 20',
+           'Jun 20',
+           'Jul 20',
+           'Aug 20',
+           'Sep 20',
+           'Oct 20',
+           'Nov 20',
+           'Dec 20',
+           'Jan 21',
+           'Feb 21',
+           'Mar 21'],
+    'br': ['Aug 19',
+           'Sep 19',
+           'Oct 19',
+           'Nov 19',
+           'Dec 19',
+           'Jan 20',
+           'Feb 20',
+           'Mar 20',
+           'Apr 20',
+           'May 20',
+           'Jun 20',
+           'Jul 20',
+           'Aug 20',
+           'Sep 20',
+           'Oct 20',
+           'Nov 20',
+           'Dec 20',
+           'Jan 21']
+}
+
+final_plot_types = {
+    'sf':   ['all',
+             'assault',
+             'burglary - residential',
+             'burglary - commercial',
+             'robbery',
+             'theft',
+             'domestic violence'],
+    'br':   ['all',
+             'assault',
+             'residential burglary',
+             'non-residential burglary',
+             'robbery',
+             'theft',
+             'domestic violence']
+}
+
 shared_types = ['burglary', 'robbery', 'theft']
 
 city_type_params = dict(sf={'assault': 1,
