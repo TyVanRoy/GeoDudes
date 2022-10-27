@@ -577,6 +577,8 @@ def gen_param_table(city):
         print("\t\tvalidation performance=", 0)
         print("\t\ttest performance=", 0)
 
+    exit()
+
     # 2.
     for i, tract in enumerate(tracts):
         ms = city_tract_params[city]
